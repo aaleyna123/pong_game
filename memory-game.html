@@ -399,9 +399,10 @@
         <button onclick="resetGame()">Play Again</button>
     </div>
 
-    <script>
-        // Game configuration
-        const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐘'];
+ <script>
+        // Oyun Ayarları
+        // 6x6 (36 kart) için yeterli emoji listesi
+        const emojis = ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐘', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐙', '🐢', '🦖'];
         
         let gameBoard = document.getElementById('gameBoard');
         let cards = [];
@@ -413,9 +414,11 @@
         let startTime = 0;
         let timerInterval = null;
         let currentDifficulty = 'easy';
-        let gridSize = { easy: 8, medium: 10, hard: 18 };
+        
+        // DÜZELTME: Toplam kart sayıları (16, 20, 36)
+        let gridSize = { easy: 16, medium: 20, hard: 36 };
 
-        // Event listeners
+        // Zorluk butonları için dinleyiciler
         document.querySelectorAll('.difficulty-btn').forEach(btn => {
             btn.addEventListener('click', changeDifficulty);
         });
@@ -423,39 +426,36 @@
         document.getElementById('startBtn').addEventListener('click', startGame);
         document.getElementById('resetBtn').addEventListener('click', resetGame);
 
-        // Difficulty selector
         function changeDifficulty(e) {
             if (gameRunning || gameStarted) return;
-
-            document.querySelectorAll('.difficulty-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            document.querySelectorAll('.difficulty-btn').forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
-
             currentDifficulty = e.target.dataset.difficulty;
             gameBoard.className = `game-board ${currentDifficulty}`;
             initializeGame();
         }
 
-        // Initialize game
         function initializeGame() {
-            const boardSize = gridSize[currentDifficulty];
-            const shuffledEmojis = [...emojis.slice(0, boardSize / 2), ...emojis.slice(0, boardSize / 2)];
+            const totalCards = gridSize[currentDifficulty]; // Toplam kart sayısı
+            const pairCount = totalCards / 2; // Çift sayısı
             
-            // Fisher-Yates shuffle
-            for (let i = shuffledEmojis.length - 1; i > 0; i--) {
+            // Emojileri seç ve çiftle
+            let selectedEmojis = emojis.slice(0, pairCount);
+            let gameEmojis = [...selectedEmojis, ...selectedEmojis]; 
+            
+            // Karıştırma (Shuffle)
+            for (let i = gameEmojis.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [shuffledEmojis[i], shuffledEmojis[j]] = [shuffledEmojis[j], shuffledEmojis[i]];
+                [gameEmojis[i], gameEmojis[j]] = [gameEmojis[j], gameEmojis[i]];
             }
 
             gameBoard.innerHTML = '';
             cards = [];
 
-            for (let i = 0; i < boardSize; i++) {
+            for (let i = 0; i < totalCards; i++) {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.dataset.index = i;
-                card.dataset.emoji = shuffledEmojis[i];
+                card.dataset.emoji = gameEmojis[i];
                 
                 const inner = document.createElement('div');
                 inner.className = 'card-inner';
@@ -473,29 +473,24 @@
             updateStats();
         }
 
-        // Start game
         function startGame() {
             if (gameStarted) return;
-            
             gameRunning = true;
             gameStarted = true;
             startTime = Date.now();
-            
-            document.getElementById('startBtn').textContent = 'Game Running...';
+            document.getElementById('startBtn').textContent = 'Oyun Başladı';
             document.getElementById('startBtn').disabled = true;
-
             startTimer();
         }
 
-        // Start timer
         function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
             timerInterval = setInterval(() => {
                 const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
                 document.getElementById('timer').textContent = elapsedSeconds + 's';
-            }, 100);
+            }, 1000);
         }
 
-        // Flip card
         function flipCard(card) {
             if (!gameRunning) return;
             if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
@@ -512,66 +507,57 @@
             }
         }
 
-        // Check for match
         function checkMatch() {
             const [card1, card2] = flippedCards;
             const isMatch = card1.dataset.emoji === card2.dataset.emoji;
 
-            setTimeout(() => {
-                if (isMatch) {
+            if (isMatch) {
+                setTimeout(() => {
                     card1.classList.add('matched');
                     card2.classList.add('matched');
                     matchedPairs++;
                     updateStats();
-
-                    if (matchedPairs === gridSize[currentDifficulty] / 2) {
-                        endGame();
-                    }
-                } else {
+                    if (matchedPairs === gridSize[currentDifficulty] / 2) endGame();
+                    flippedCards = [];
+                }, 300);
+            } else {
+                setTimeout(() => {
                     card1.classList.remove('flipped');
                     card2.classList.remove('flipped');
                     card1.querySelector('.card-inner').textContent = '?';
                     card2.querySelector('.card-inner').textContent = '?';
-                }
-                flippedCards = [];
-            }, 600);
+                    flippedCards = [];
+                }, 800);
+            }
         }
 
-        // Update stats
         function updateStats() {
             document.getElementById('moves').textContent = moves;
             document.getElementById('matches').textContent = matchedPairs;
         }
 
-        // End game
         function endGame() {
             gameRunning = false;
             clearInterval(timerInterval);
-
-            const finalTime = Math.floor((Date.now() - startTime) / 1000);
+            const finalTime = document.getElementById('timer').textContent;
             document.getElementById('finalMoves').textContent = moves;
-            document.getElementById('finalTime').textContent = finalTime;
-
+            document.getElementById('finalTime').textContent = finalTime.replace('s', '');
             document.getElementById('overlay').classList.add('show');
             document.getElementById('gameOverModal').classList.add('show');
         }
 
-        // Reset game
         function resetGame() {
             gameRunning = false;
             gameStarted = false;
             clearInterval(timerInterval);
-
-            document.getElementById('startBtn').textContent = 'Start Game';
+            document.getElementById('startBtn').textContent = 'Başlat';
             document.getElementById('startBtn').disabled = false;
             document.getElementById('overlay').classList.remove('show');
             document.getElementById('gameOverModal').classList.remove('show');
             document.getElementById('timer').textContent = '0s';
-
             initializeGame();
         }
 
-        // Initialize on load
         initializeGame();
     </script>
 </body>
